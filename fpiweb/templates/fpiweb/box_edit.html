@@ -24,6 +24,7 @@
 
     <form action="" method="post">
         {% csrf_token %}
+        {% bootstrap_form_errors form type='non_fields' %}
         {% bootstrap_field form.box_number %}
         {% bootstrap_field form.box_type %}
         {% bootstrap_field form.loc_row %}

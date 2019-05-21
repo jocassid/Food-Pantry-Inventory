@@ -203,4 +203,9 @@ class BoxDetailsView(LoginRequiredMixin, DetailView):
         return context
 
 
+class ImageCapture(LoginRequiredMixin, TemplateView):
+
+    template_name = 'fpiweb/image_capture.html'
+
+
 # EOF
