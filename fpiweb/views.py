@@ -1485,6 +1485,77 @@ class ManualPalletStatus(LoginRequiredMixin, ListView):
         return context
 
 
+class ManualPalletMove(LoginRequiredMixin, View):
+
+    MODE_ENTER_FROM_LOCATION = 'enter from location'
+
+    FORM_PREFIX_FROM_LOCATION = 'from'
+
+    template = 'fpiweb/manual_pallet_move.html'
+
+    def get(self, request):
+        return self.build_response(
+            request,
+            self.MODE_ENTER_FROM_LOCATION,
+            from_location_form=ExistingLocationForm(
+                prefix=self.FORM_PREFIX_FROM_LOCATION,
+            )
+        )
+
+    def post(self, request):
+        mode = request.POST.get('mode')
+        if not mode:
+            return self.build_response(
+                request,
+                self.MODE_ENTER_FROM_LOCATION,
+                from_location_form=ExistingLocationForm(
+                    prefix=self.FORM_PREFIX_FROM_LOCATION,
+                ),
+                errors=[f"Missing mode parameter"]
+            )
+
+        if mode == self.MODE_ENTER_FROM_LOCATION:
+            return self.post_from_location_form(request)
+
+    def post_from_location_form(self, request):
+        from_location_form = ExistingLocationForm(
+            request.POST,
+            prefix=self.FORM_PREFIX_FROM_LOCATION,
+        )
+        if not from_location_form.is_valid():
+            return self.build_response(
+                request,
+                self.MODE_ENTER_FROM_LOCATION,
+                from_location_form=from_location_form,
+                status=400,
+            )
+
+        from_location = from_location_form.cleaned_data.get('location')
+
+
+
+    def build_response(
+            self,
+            request,
+            mode,
+            from_location_form=None,
+            errors=None,
+            status=200):
+
+        return render(
+            request,
+            self.template,
+            {
+                'mode': mode,
+                'view_class': self.__class__,
+                'from_location_form': from_location_form,
+                'errors': errors or [],
+            },
+            status=status,
+        )
+
+
+
 class ActivityDownloadView(LoginRequiredMixin, View):
 
     date_format = '%m/%d/%Y'

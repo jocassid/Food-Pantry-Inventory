@@ -11,7 +11,8 @@ from fpiweb.views import AboutView, ActivityDownloadView, BoxDetailsView, \
     BoxNewView, BoxScannedView, BuildPalletView, IndexView, LoginView, \
     ConstraintCreateView, ConstraintDeleteView, ConstraintsListView, \
     ConstraintUpdateView, LogoutView, PrintLabelsView, ScannerView, \
-    TestScanView, MaintenanceView, ManualMoveBoxView, LocRowListView, \
+    TestScanView, MaintenanceView, \
+    ManualMoveBoxView, LocRowListView, \
     LocRowCreateView, LocRowUpdateView, LocRowDeleteView, LocBinListView, \
     LocBinCreateView, LocBinUpdateView, LocBinDeleteView, LocTierListView, \
     LocTierCreateView, LocTierUpdateView, LocTierDeleteView, ManualMenuView, \
@@ -215,7 +216,13 @@ urlpatterns = [
         'manual_pallet_new/',
         ManualPalletNew.as_view(),
         name='manual_pallet_new'
-    ) ,
+    ),
+
+    path(
+        'manual_pallet_move/',
+        ManualPalletMove.as_view(),
+        name='manual_pallet_move',
+    ),
 
     # Manually show the current pallet status
     # e.g. /fpiweb/manualpalletstatus/5/ = current pallet status
