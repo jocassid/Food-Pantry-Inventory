@@ -6,20 +6,55 @@ from django.urls import path
 from django.views.generic import TemplateView
 
 
-from fpiweb.views import AboutView, ActivityDownloadView, BoxDetailsView, \
-    BoxEditView, BoxEmptyView, BoxEmptyMoveView, BoxItemFormView, BoxMoveView, \
-    BoxNewView, BoxScannedView, BuildPalletView, IndexView, LoginView, \
-    ConstraintCreateView, ConstraintDeleteView, ConstraintsListView, \
-    ConstraintUpdateView, LogoutView, PrintLabelsView, ScannerView, \
-    TestScanView, MaintenanceView, \
-    ManualMoveBoxView, LocRowListView, \
-    LocRowCreateView, LocRowUpdateView, LocRowDeleteView, LocBinListView, \
-    LocBinCreateView, LocBinUpdateView, LocBinDeleteView, LocTierListView, \
-    LocTierCreateView, LocTierUpdateView, LocTierDeleteView, ManualMenuView, \
-    ManualPalletNew, ManualPalletStatus, PalletManagementView, \
-    PalletSelectView, ManualPalletMenuView, ManualBoxMenuView, \
-    ManualCheckinBoxView, ManualConsumeBoxView, ManualBoxStatusView, \
-    ManualNewBoxView
+from fpiweb.views import \
+    AboutView, \
+    ActivityDownloadView, \
+    BoxDetailsView, \
+    BoxEditView, \
+    ConstraintCreateView, \
+    ConstraintDeleteView, \
+    ConstraintsListView, \
+    ConstraintUpdateView, \
+    BoxEmptyView, \
+    BoxEmptyMoveView, \
+    BoxItemFormView, \
+    BoxMoveView, \
+    BoxNewView, \
+    BoxScannedView, \
+    BuildPalletView, \
+    IndexView, \
+    LocBinCreateView,\
+    LocBinDeleteView, \
+    LocBinListView, \
+    LocBinUpdateView, \
+    LocRowCreateView, \
+    LocRowDeleteView, \
+    LocRowListView, \
+    LocRowUpdateView, \
+    LocTierCreateView, \
+    LocTierDeleteView, \
+    LocTierListView, \
+    LocTierUpdateView, \
+    LoginView, \
+    LogoutView, \
+    PrintLabelsView, \
+    ScannerView, \
+    TestScanView, \
+    MaintenanceView, \
+    ManualBoxMenuView, \
+    ManualBoxStatusView, \
+    ManualCheckinBoxView, \
+    ManualConsumeBoxView, \
+    ManualMenuView, \
+    ManualMoveBoxView, \
+    ManualNewBoxView, \
+    ManualPalletMenuView, \
+    ManualPalletMoveView, \
+    ManualPalletNew, \
+    ManualPalletStatus, \
+    PalletManagementView, \
+    PalletSelectView
+
 
 # from fpiweb.views import ConstraintDetailView
 
@@ -220,7 +255,7 @@ urlpatterns = [
 
     path(
         'manual_pallet_move/',
-        ManualPalletMove.as_view(),
+        ManualPalletMoveView.as_view(),
         name='manual_pallet_move',
     ),
 

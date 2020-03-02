@@ -53,12 +53,32 @@ from fpiweb.models import \
 from fpiweb.code_reader import \
     CodeReaderError, \
     read_box_number
-from fpiweb.forms import BoxItemForm, EmptyBoxNumberForm, FilledBoxNumberForm, \
-    ExtantBoxNumberForm, BuildPalletForm, ConstraintsForm, \
-    ExistingLocationForm, HiddenPalletForm, LocRowForm, LocBinForm, \
-    LocTierForm, LoginForm, NewBoxForm, PalletNameForm, PalletSelectForm, \
-    PrintLabelsForm, ExistingProductForm, ProductForm, ExpYearForm, \
-    NewBoxNumberForm, BoxTypeForm, ExistingBoxTypeForm
+from fpiweb.forms import \
+    BoxItemForm, \
+    BuildPalletForm, \
+    BoxTypeForm, \
+    ConfirmMergeForm, \
+    ConstraintsForm, \
+    EmptyBoxNumberForm, \
+    ExtantBoxNumberForm, \
+    ExistingBoxTypeForm, \
+    ExistingLocationForm, \
+    ExistingLocationWithBoxesForm, \
+    ExistingProductForm, \
+    ExpYearForm, \
+    FilledBoxNumberForm, \
+    HiddenPalletForm, \
+    LocBinForm, \
+    LocRowForm, \
+    LocTierForm, \
+    LoginForm, \
+    MoveToLocationForm, \
+    NewBoxForm, \
+    NewBoxNumberForm, \
+    PalletNameForm, \
+    PalletSelectForm, \
+    PrintLabelsForm, \
+    ProductForm
 from fpiweb.qr_code_utilities import QRCodePrinter
 from fpiweb.support.BoxManagement import BoxManagementClass
 
@@ -1485,11 +1505,15 @@ class ManualPalletStatus(LoginRequiredMixin, ListView):
         return context
 
 
-class ManualPalletMove(LoginRequiredMixin, View):
+class ManualPalletMoveView(LoginRequiredMixin, View):
 
     MODE_ENTER_FROM_LOCATION = 'enter from location'
+    MODE_ENTER_TO_LOCATION = 'enter to location'
+    MODE_CONFIRM_MERGE = 'confirm merge'
 
     FORM_PREFIX_FROM_LOCATION = 'from'
+    FORM_PREFIX_TO_LOCATION = 'to'
+    FORM_PREFIX_CONFIRM_MERGE = 'confirm_merge'
 
     template = 'fpiweb/manual_pallet_move.html'
 
@@ -1497,7 +1521,7 @@ class ManualPalletMove(LoginRequiredMixin, View):
         return self.build_response(
             request,
             self.MODE_ENTER_FROM_LOCATION,
-            from_location_form=ExistingLocationForm(
+            from_location_form=ExistingLocationWithBoxesForm(
                 prefix=self.FORM_PREFIX_FROM_LOCATION,
             )
         )
@@ -1508,17 +1532,26 @@ class ManualPalletMove(LoginRequiredMixin, View):
             return self.build_response(
                 request,
                 self.MODE_ENTER_FROM_LOCATION,
-                from_location_form=ExistingLocationForm(
+                from_location_form=ExistingLocationWithBoxesForm(
                     prefix=self.FORM_PREFIX_FROM_LOCATION,
                 ),
-                errors=[f"Missing mode parameter"]
+                errors=[f"Missing mode parameter"],
+                status=400,
             )
 
         if mode == self.MODE_ENTER_FROM_LOCATION:
             return self.post_from_location_form(request)
+        if mode == self.MODE_ENTER_TO_LOCATION:
+            return self.post_to_location_form(request)
+        if mode == self.MODE_CONFIRM_MERGE:
+            return self.post_confirm_merge_form(request)
+        return error_page(
+            request,
+            f"Unrecognized mode {mode} in ManualPalletMoveView"
+        )
 
     def post_from_location_form(self, request):
-        from_location_form = ExistingLocationForm(
+        from_location_form = ExistingLocationWithBoxesForm(
             request.POST,
             prefix=self.FORM_PREFIX_FROM_LOCATION,
         )
@@ -1531,7 +1564,81 @@ class ManualPalletMove(LoginRequiredMixin, View):
             )
 
         from_location = from_location_form.cleaned_data.get('location')
+        return self.show_to_location_form(
+            request,
+            from_location,
+        )
 
+    def show_to_location_form(self, request, from_location):
+        return self.build_response(
+            request,
+            self.MODE_ENTER_TO_LOCATION,
+            to_location_form=MoveToLocationForm(
+                prefix=self.FORM_PREFIX_TO_LOCATION,
+                initial={
+                    'from_location': from_location,
+                }
+            )
+        )
+
+    def post_to_location_form(self, request):
+        to_location_form = MoveToLocationForm(
+            request.POST,
+            prefix=self.FORM_PREFIX_TO_LOCATION,
+        )
+        if not to_location_form.is_valid():
+            return self.build_response(
+                request,
+                self.MODE_ENTER_TO_LOCATION,
+                to_location_form=to_location_form,
+                status=400,
+            )
+
+        from_location = to_location_form.cleaned_data['from_location']
+        to_location = to_location_form.cleaned_data['location']
+
+        boxes_at_to_location = \
+            Box.objects.filter(location=to_location).count()
+
+        if boxes_at_to_location > 0:
+            return self.build_response(
+                request,
+                self.MODE_CONFIRM_MERGE,
+                confirm_merge_form=ConfirmMergeForm(
+                    prefix=self.FORM_PREFIX_CONFIRM_MERGE,
+                    initial={
+                        'from_location': from_location,
+                        'to_location': to_location,
+                        'boxes_at_to_location': boxes_at_to_location,
+                    },
+                ),
+            )
+
+    def post_confirm_merge_form(self, request):
+        confirm_merge_form = ConfirmMergeForm(
+            request.POST,
+            prefix=self.FORM_PREFIX_CONFIRM_MERGE,
+        )
+        if not confirm_merge_form.is_valid():
+            return self.build_response(
+                request,
+                self.MODE_CONFIRM_MERGE,
+                confirm_merge_form=confirm_merge_form,
+                status=400,
+            )
+
+        from_location = \
+            confirm_merge_form.cleaned_data['from_location']
+        to_location = confirm_merge_form.cleaned_data['to_location']
+        action = confirm_merge_form.cleaned_data['action']
+
+        print(f"action is {action}")
+
+        if action == ConfirmMergeForm.ACTION_CHANGE_LOCATION:
+            return self.show_to_location_form(
+                request,
+                from_location,
+            )
 
 
     def build_response(
@@ -1539,6 +1646,8 @@ class ManualPalletMove(LoginRequiredMixin, View):
             request,
             mode,
             from_location_form=None,
+            to_location_form=None,
+            confirm_merge_form=None,
             errors=None,
             status=200):
 
@@ -1549,11 +1658,12 @@ class ManualPalletMove(LoginRequiredMixin, View):
                 'mode': mode,
                 'view_class': self.__class__,
                 'from_location_form': from_location_form,
+                'to_location_form': to_location_form,
+                'confirm_merge_form': confirm_merge_form,
                 'errors': errors or [],
             },
             status=status,
         )
-
 
 
 class ActivityDownloadView(LoginRequiredMixin, View):

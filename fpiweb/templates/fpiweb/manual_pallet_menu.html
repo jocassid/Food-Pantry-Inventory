@@ -52,6 +52,12 @@
             </a>
         </div>
     {% endif %}
+    <div>
+        {# Does it matter whether or not there's an active pallet for this link #}
+        <a href="{% url 'fpiweb:manual_pallet_move' %}">
+            Move Pallet
+        </a>
+    </div>
 
     <br/>
 
