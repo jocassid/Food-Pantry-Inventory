@@ -52,6 +52,7 @@ errors:                 Iterable of non-form errors
             {% bootstrap_form_errors confirm_merge_form %}
             {{ confirm_merge_form.from_location }}
             {{ confirm_merge_form.to_location }}
+            {{ confirm_merge_form.boxes_at_to_location }}
             <p>There are {{ confirm_merge_form.boxes_at_to_location_int }}
                 boxes at {{ confirm_merge_form.to_location_str }}.</p>
             {% bootstrap_field confirm_merge_form.action %}

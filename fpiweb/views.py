@@ -15,7 +15,9 @@ from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.serializers import serialize
+from django.db import transaction
 from django.db.models import Max
+from django.db.models.functions import Substr
 from django.forms import formset_factory
 from django.http import \
     FileResponse, \
@@ -1510,6 +1512,7 @@ class ManualPalletMoveView(LoginRequiredMixin, View):
     MODE_ENTER_FROM_LOCATION = 'enter from location'
     MODE_ENTER_TO_LOCATION = 'enter to location'
     MODE_CONFIRM_MERGE = 'confirm merge'
+    MODE_COMPLETE = 'complete'
 
     FORM_PREFIX_FROM_LOCATION = 'from'
     FORM_PREFIX_TO_LOCATION = 'to'
@@ -1614,12 +1617,16 @@ class ManualPalletMoveView(LoginRequiredMixin, View):
                 ),
             )
 
+        return self.move_boxes(request, from_location, to_location)
+
     def post_confirm_merge_form(self, request):
         confirm_merge_form = ConfirmMergeForm(
             request.POST,
             prefix=self.FORM_PREFIX_CONFIRM_MERGE,
         )
         if not confirm_merge_form.is_valid():
+            print(f"errors is {confirm_merge_form.errors}")
+            print(f"non_field_errors is {confirm_merge_form.non_field_errors()}")
             return self.build_response(
                 request,
                 self.MODE_CONFIRM_MERGE,
@@ -1635,11 +1642,72 @@ class ManualPalletMoveView(LoginRequiredMixin, View):
         print(f"action is {action}")
 
         if action == ConfirmMergeForm.ACTION_CHANGE_LOCATION:
+            # this method sets mode appropriately
             return self.show_to_location_form(
                 request,
                 from_location,
             )
 
+        return self.move_boxes(request, from_location, to_location)
+
+    @staticmethod
+    def get_next_temp_name():
+        numbers = Pallet.objects.filter(
+            name__startswith='temp'
+        ).annotate(
+            number=Substr('name', 5),
+        ).values_list(
+            'number',
+            flat=True,
+        )
+
+        if not numbers:
+            return 'temp1'
+
+        max_number = 0
+        for n in numbers:
+            try:
+                n = int(n)
+            except (TypeError, ValueError):
+                continue
+            if n > max_number:
+                max_number = n
+        return f"temp{max_number + 1}"
+
+    def move_boxes(self, request, from_location, to_location):
+        # Create temporary Pallet and PalletBox records in order to use
+        # pallet_finish
+        with transaction.atomic():
+            pallet = Pallet.objects.create(
+                name=self.get_next_temp_name(),
+                location=to_location
+            )
+
+        boxes_to_move = Box.objects.filter(location=from_location)
+
+        pallet_boxes = []
+        for box in boxes_to_move:
+            pallet_box = PalletBox(
+                pallet=pallet,
+                box=box,
+                product=box.product,
+                exp_year=box.exp_year,
+                exp_month_start=box.exp_month_start,
+                exp_month_end=box.exp_month_end,
+            )
+            pallet_boxes.append(pallet_box)
+        boxes_moved = len(pallet_boxes)
+        PalletBox.objects.bulk_create(pallet_boxes)
+
+        box_manager = BoxManagementClass()
+        box_manager.pallet_finish(pallet)
+
+        return self.build_response(
+            request,
+            self.MODE_COMPLETE,
+            boxes_moved=boxes_moved,
+            to_location=to_location,
+        )
 
     def build_response(
             self,
@@ -1648,6 +1716,8 @@ class ManualPalletMoveView(LoginRequiredMixin, View):
             from_location_form=None,
             to_location_form=None,
             confirm_merge_form=None,
+            boxes_moved=0,
+            to_location=None,
             errors=None,
             status=200):
 
@@ -1660,6 +1730,8 @@ class ManualPalletMoveView(LoginRequiredMixin, View):
                 'from_location_form': from_location_form,
                 'to_location_form': to_location_form,
                 'confirm_merge_form': confirm_merge_form,
+                'boxes_moved': boxes_moved,
+                'to_location': to_location,
                 'errors': errors or [],
             },
             status=status,

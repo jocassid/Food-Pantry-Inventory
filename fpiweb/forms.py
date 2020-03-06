@@ -859,6 +859,7 @@ class ConfirmMergeForm(forms.Form):
 
     boxes_at_to_location = forms.IntegerField(
         disabled=True,
+        required=False,
         widget=forms.HiddenInput,
     )
 
