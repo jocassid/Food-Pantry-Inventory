@@ -49,12 +49,9 @@ def month_choices():
         [(str(i), str(i)) for i in range(1, 13)]
     )
 
+
 def expire_year_choices():
     current_year = CURRENT_YEAR
-    exp_year_limit_key = Constraints.FUTURE_EXP_YEAR_LIMIT
-    years_ahead_constraint_rec = Constraints.objects.get(
-        constraint_name=exp_year_limit_key
-    )
     years_ahead_list = Constraints.get_values(
         Constraints.FUTURE_EXP_YEAR_LIMIT
     )
@@ -792,8 +789,16 @@ class ExistingLocationForm(LocationForm):
         cleaned_data = super().clean()
 
         loc_row = cleaned_data.get('loc_row')
+        if not loc_row:
+            raise ValidationError("missing loc_row")
+
         loc_bin = cleaned_data.get('loc_bin')
+        if not loc_bin:
+            raise ValidationError("missing loc_bin")
+
         loc_tier = cleaned_data.get('loc_tier')
+        if not loc_tier:
+            raise ValidationError("missing loc_tier")
 
         try:
             location = Location.objects.get(

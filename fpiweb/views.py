@@ -1538,7 +1538,7 @@ class ManualPalletMoveView(LoginRequiredMixin, View):
                 from_location_form=ExistingLocationWithBoxesForm(
                     prefix=self.FORM_PREFIX_FROM_LOCATION,
                 ),
-                errors=[f"Missing mode parameter"],
+                errors=["Missing mode parameter"],
                 status=400,
             )
 

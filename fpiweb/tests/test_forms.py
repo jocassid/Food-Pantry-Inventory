@@ -8,11 +8,15 @@ from django.test import TestCase
 from fpiweb.forms import \
     BoxItemForm, \
     BuildPalletForm,\
+    LocationForm, \
     NewBoxForm
 from fpiweb.models import \
     Box, \
     BoxNumber, \
     BoxType, \
+    LocRow, \
+    LocBin, \
+    LocTier, \
     Product
 
 
@@ -69,4 +73,33 @@ class BoxItemFormTest(TestCase):
             'Exp month end must be later than or equal to Exp month start',
             form.non_field_errors()
         )
+
+
+class LocationFormTest(TestCase):
+
+    fixtures = ('LocRow',)
+
+    def test_is_valid__missing_value(self):
+
+        row = LocRow.objects.get(pk=1)
+
+        form = LocationForm({
+            'loc_row': row.id,
+            'loc_tier': 99,
+        })
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            {'loc_bin', 'loc_tier'},
+            form.errors.keys(),
+        )
+        self.assertEqual(
+            ['This field is required.'],
+            form.errors['loc_bin'],
+        )
+        self.assertEqual(
+            ['Select a valid choice. That choice is not one of the available choices.'],
+            form.errors['loc_tier'],
+        )
+
+
 

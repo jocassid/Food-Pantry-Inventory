@@ -18,6 +18,7 @@ from fpiweb.forms import \
     BuildPalletForm, \
     ExtantBoxNumberForm, \
     ExistingLocationForm, \
+    ExistingLocationWithBoxesForm, \
     FilledBoxNumberForm, \
     HiddenPalletForm, \
     PalletNameForm, \
@@ -35,11 +36,15 @@ from fpiweb.models import \
     PalletBox, \
     Product, \
     Activity
-from fpiweb.tests.utility import create_user, default_password
+from fpiweb.tests.utility import \
+    create_user, \
+    default_password, \
+    logged_in_user
 from fpiweb.views import \
     BoxItemFormView, \
     BuildPalletView, \
-    ManualMoveBoxView
+    ManualMoveBoxView, \
+    ManualPalletMoveView
 
 
 def management_form_post_data(
@@ -651,6 +656,83 @@ class TestBoxItemFormView(TestCase):
             box_number,
             form.initial['box_number']
         )
+
+
+class TestManualPalletMoveView(TestCase):
+
+    url = reverse_lazy('fpiweb:manual_pallet_move')
+
+    def test_get(self):
+
+        client = logged_in_user('fred', 'roush')
+
+        response = client.get(self.url)
+        self.assertEqual(200, response.status_code)
+
+        context = response.context
+        self.assertEqual(
+            ManualPalletMoveView.MODE_ENTER_FROM_LOCATION,
+            context['mode']
+        )
+        self.assertIsInstance(
+            context.get('from_location_form'),
+            ExistingLocationWithBoxesForm,
+        )
+
+    def test_post__missing_mode(self):
+
+        client = logged_in_user('emily', 'franzese')
+
+        response = client.post(self.url)
+        self.assertContains(response, "Missing mode parameter", status_code=400)
+
+        context = response.context
+        self.assertEqual(
+            ManualPalletMoveView.MODE_ENTER_FROM_LOCATION,
+            context['mode']
+        )
+        self.assertIsInstance(
+            context.get('from_location_form'),
+            ExistingLocationWithBoxesForm,
+        )
+
+    def test_post__unrecognized_mode(self):
+
+        client = logged_in_user('kaitlin', 'kostiv')
+
+        mode = 'A suffusion of yellow'
+        response = client.post(self.url, {'mode': mode})
+        self.assertContains(
+            response,
+            f"Unrecognized mode {mode} in ManualPalletMoveView",
+            status_code=400,
+        )
+
+    def test_post_from_location_form__form_invalid(self):
+
+        client = logged_in_user('Jerlene', 'Elder')
+
+        mode = ManualPalletMoveView.MODE_ENTER_FROM_LOCATION
+
+        response = client.post(self.url, {'mode': mode})
+        self.assertContains(response, 'missing loc_row', status_code=400)
+
+        context = response.context
+        self.assertEqual(
+            mode,
+            context['mode'],
+        )
+        self.assertIsInstance(
+            context['from_location_form'],
+            ExistingLocationWithBoxesForm,
+        )
+
+
+
+
+
+
+
 
 
 
