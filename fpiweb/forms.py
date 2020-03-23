@@ -789,16 +789,12 @@ class ExistingLocationForm(LocationForm):
         cleaned_data = super().clean()
 
         loc_row = cleaned_data.get('loc_row')
-        if not loc_row:
-            raise ValidationError("missing loc_row")
-
         loc_bin = cleaned_data.get('loc_bin')
-        if not loc_bin:
-            raise ValidationError("missing loc_bin")
-
         loc_tier = cleaned_data.get('loc_tier')
-        if not loc_tier:
-            raise ValidationError("missing loc_tier")
+
+        if not all([loc_row, loc_bin, loc_tier]):
+            # Location form will have already raised validation error
+            return cleaned_data
 
         try:
             location = Location.objects.get(
@@ -823,7 +819,12 @@ class ExistingLocationWithBoxesForm(ExistingLocationForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        location = cleaned_data['location']
+        location = cleaned_data.get('location')
+        if not location:
+            # If ExistingLocationform fails validation, Location will not be
+            # in cleaned_data.  ExistingLocationForm will have already raised
+            # a ValidationError
+            return cleaned_data
         if Box.objects.filter(location=location).exists():
             return cleaned_data
         raise ValidationError(

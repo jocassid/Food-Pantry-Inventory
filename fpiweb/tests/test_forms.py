@@ -3,17 +3,23 @@ __author__ = '(Multiple)'
 __project__ = "Food-Pantry-Inventory"
 __creation_date__ = "06/03/2019"
 
+
+from django.core.exceptions import ValidationError
+from django.db.models import Count
 from django.test import TestCase
 
 from fpiweb.forms import \
     BoxItemForm, \
     BuildPalletForm,\
+    ExistingLocationForm, \
+    ExistingLocationWithBoxesForm, \
     LocationForm, \
     NewBoxForm
 from fpiweb.models import \
     Box, \
     BoxNumber, \
     BoxType, \
+    Location, \
     LocRow, \
     LocBin, \
     LocTier, \
@@ -77,7 +83,7 @@ class BoxItemFormTest(TestCase):
 
 class LocationFormTest(TestCase):
 
-    fixtures = ('LocRow',)
+    fixtures = ('LocRow', 'LocBin', 'LocTier')
 
     def test_is_valid__missing_value(self):
 
@@ -101,5 +107,179 @@ class LocationFormTest(TestCase):
             form.errors['loc_tier'],
         )
 
+
+class ExistingLocationFormTest(TestCase):
+
+    fixtures = ('LocRow', 'LocBin', 'LocTier', 'Location')
+
+    def test_clean__nonexistent_location(self):
+
+        loc_row = LocRow.objects.get(loc_row='04')
+        loc_bin = LocBin.objects.get(loc_bin='03')
+        loc_tier = LocTier.objects.get(loc_tier='B2')
+
+        # ----------------------
+        # Non-existent location
+        # ----------------------
+        location = Location.objects.get(
+            loc_row=loc_row,
+            loc_bin=loc_bin,
+            loc_tier=loc_tier,
+        )
+        location.delete()
+
+        form = ExistingLocationForm({
+            'loc_row': loc_row.pk,
+            'loc_bin': loc_bin.pk,
+            'loc_tier': loc_tier.pk,
+        })
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            {
+                '__all__': ['Location 04, 03, B2 does not exist.']
+            },
+            form.errors,
+        )
+        self.assertEqual(
+            ['Location 04, 03, B2 does not exist.'],
+            form.non_field_errors(),
+        )
+
+    def test_clean__multiple_locations_found(self):
+
+        # -------------------------
+        # Multiple locations found
+        # -------------------------
+        location = Location.objects.get(
+            loc_row__loc_row='04',
+            loc_bin__loc_bin='04',
+            loc_tier__loc_tier='B1'
+        )
+
+        # Create a duplicate location
+        Location.objects.create(
+            loc_row=location.loc_row,
+            loc_bin=location.loc_bin,
+            loc_tier=location.loc_tier
+        )
+
+        form = ExistingLocationForm({
+            'loc_row': location.loc_row.pk,
+            'loc_bin': location.loc_bin.pk,
+            'loc_tier': location.loc_tier.pk,
+        })
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            {
+                '__all__': ['Multiple 04, 04, B1 locations found'],
+            },
+            form.errors,
+        )
+        self.assertEqual(
+            ['Multiple 04, 04, B1 locations found'],
+            form.non_field_errors(),
+        )
+
+    def test_clean__successful_run(self):
+
+        location = Location.objects.get(
+            loc_row__loc_row='04',
+            loc_bin__loc_bin='02',
+            loc_tier__loc_tier='B1',
+        )
+
+        form = ExistingLocationForm({
+            'loc_row': location.loc_row.pk,
+            'loc_bin': location.loc_bin.pk,
+            'loc_tier': location.loc_tier.pk,
+        })
+        self.assertTrue(form.is_valid())
+        self.assertEqual(location.pk, form.cleaned_data['location'].pk)
+
+
+class ExistingLocationWithBoxesFormTest(TestCase):
+
+    fixtures = ('BoxType', 'LocRow', 'LocBin', 'LocTier', 'Location')
+
+    def test_clean(self):
+
+        # ----------------------------------------------------------------
+        # super class's clean detects error (i.e. location doesn't exist)
+        # ----------------------------------------------------------------
+        loc_row = '03'
+        loc_bin = '03'
+        loc_tier = 'A1'
+
+        location = Location.objects.get(
+            loc_row__loc_row=loc_row,
+            loc_bin__loc_bin=loc_bin,
+            loc_tier__loc_tier=loc_tier,
+        )
+        location.delete()
+
+        form = ExistingLocationWithBoxesForm({
+            'loc_row': location.loc_row,
+            'loc_bin': location.loc_bin,
+            'loc_tier': location.loc_tier
+        })
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            {'__all__': ['Location 03, 03, A1 does not exist.']},
+            form.errors,
+        )
+        self.assertEqual(
+            ['Location 03, 03, A1 does not exist.'],
+            form.non_field_errors(),
+        )
+
+        # ---------------------------
+        # Try a location w/out boxes
+        # ---------------------------
+
+        location = Location.objects.annotate(
+            box_count=Count('box')
+        ).filter(
+            box_count=0
+        ).first()
+
+        form = ExistingLocationWithBoxesForm({
+            'loc_row': location.loc_row,
+            'loc_bin': location.loc_bin,
+            'loc_tier': location.loc_tier,
+        })
+
+        self.assertFalse(form.is_valid())
+        expected_error = "Location {}, {}, {} doesn't have any boxes".format(
+            location.loc_row.loc_row,
+            location.loc_bin.loc_bin,
+            location.loc_tier.loc_tier,
+        )
+        self.assertEqual(
+            {'__all__': [expected_error]},
+            form.errors,
+        )
+        self.assertEqual(
+            [expected_error],
+            form.non_field_errors(),
+        )
+
+        # ---------------------------------------------
+        # Add a box to the location form will validate
+        # ---------------------------------------------
+
+        Box.objects.create(
+            box_type=Box.box_type_default(),
+            box_number=BoxNumber.format_box_number(111),
+            location=location,
+        )
+
+        form = ExistingLocationWithBoxesForm({
+            'loc_row': location.loc_row,
+            'loc_bin': location.loc_bin,
+            'loc_tier': location.loc_tier,
+        })
+
+        self.assertTrue(form.is_valid())
 
 

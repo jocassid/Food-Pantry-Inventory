@@ -715,7 +715,11 @@ class TestManualPalletMoveView(TestCase):
         mode = ManualPalletMoveView.MODE_ENTER_FROM_LOCATION
 
         response = client.post(self.url, {'mode': mode})
-        self.assertContains(response, 'missing loc_row', status_code=400)
+        self.assertContains(
+            response,
+            'This field is required.',
+            status_code=400,
+        )
 
         context = response.context
         self.assertEqual(
