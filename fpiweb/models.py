@@ -1050,23 +1050,16 @@ class Constraints(models.Model):
         verbose_name_plural = 'Constraints'
 
     # Valid constraint key values with associated names for each key.
-    TIER: str = 'Tier'
-    ROW: str = 'Row'
-    BIN: str = 'Bin'
     QUANTITY_LIMIT: str = 'Quantity Limit'
     FUTURE_EXP_YEAR_LIMIT = 'Future Expiration Year Limit'
     LOCATION_EXCLUSIONS = 'Location Exclusions '
 
     CONSTRAINT_NAME_CHOICES = (
-        (ROW, 'Rows in the warehouse'),
-        (BIN, 'Bins in the Warehouse'),
-        (TIER, 'Tiers in the Warehouse'),
         (LOCATION_EXCLUSIONS, 'Warehouse locations excluded from inventory'),
         (QUANTITY_LIMIT, 'Typical count of items in a box'),
         (FUTURE_EXP_YEAR_LIMIT,
             'Maximum years of future expiration permitted'),
     )
-
 
     # Constraint Type Choice Names
     INT_RANGE = 'Int-MM'
