@@ -52,8 +52,7 @@ from fpiweb.views import \
     PalletManagementView, \
     PalletSelectView, \
     PrintLabelsView, \
-    ScannerView, \
-    TestScanView
+    ScannerView
 # from fpiweb.views import ConstraintDetailView
 
 __author__ = '(Multiple)'
@@ -202,9 +201,6 @@ urlpatterns = [
 
     # send scan image or box number to server receive JSON info on box
     path('box/box_form/', BoxItemFormView.as_view(), name='box_form'),
-
-    # e.g. /fpiweb/test_scan/ = ???
-    path('test_scan/', TestScanView.as_view(), name='test_scan'),
 
     # Add a box to a pallet view
     # e.g. /fpiweb/build_pallet/box/box12345/ = add a box to existing pallet

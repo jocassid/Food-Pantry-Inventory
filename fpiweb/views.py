@@ -765,66 +765,6 @@ class BoxScannedView(PermissionRequiredMixin, View):
         return redirect('fpiweb:build_pallet', args=(box.pk,))
 
 
-class TestScanView(PermissionRequiredMixin, TemplateView):
-
-    permission_required = (
-        'fpiweb.dummy_profile',
-    )
-
-    template_name = 'fpiweb/test_scan.html'
-
-    @staticmethod
-    def get_box_scanned_url(box_number):
-        if box_number.lower().startswith('box'):
-            box_number = box_number[3:]
-        return reverse('fpiweb:box_scanned', args=(box_number,))
-
-    @staticmethod
-    def get_box_url_by_filters(**filters):
-        box_number = Box.objects \
-            .filter(**filters) \
-            .values_list('box_number', flat=True) \
-            .first()
-        if box_number is None:
-            return ""
-        return TestScanView.get_box_scanned_url(box_number)
-
-    def get_context_data(self, **kwargs):
-
-        full_box_url = self.get_box_url_by_filters(product__isnull=False)
-        empty_box_url = self.get_box_url_by_filters(product__isnull=True)
-
-        new_box_url = self.get_box_scanned_url(
-            BoxNumber.get_next_box_number()
-        )
-
-        # schema http or https
-        schema = 'http'
-        if settings.DEBUG is False and hasattr(self.request, 'schema'):
-            schema = self.request.schema
-
-        protocol_and_host = "{}://{}".format(
-            schema,
-            self.request.META.get('HTTP_HOST', '')
-        )
-
-        full_box_url = protocol_and_host + full_box_url
-        empty_box_url = protocol_and_host + empty_box_url
-        new_box_url = protocol_and_host + new_box_url
-
-        empty_box = Box.objects.filter(product__isnull=True).first()
-        full_box = Box.objects.filter(product__isnull=False).first()
-
-        return {
-            'full_box_url': full_box_url,
-            'empty_box_url': empty_box_url,
-            'new_box_url': new_box_url,
-            'empty_box': empty_box,
-            'full_box': full_box,
-            'next_box_number': BoxNumber.get_next_box_number(),
-        }
-
-
 class BuildPalletError(RuntimeError):
     pass
 
