@@ -2021,12 +2021,6 @@ class ManualBoxStatusView(PermissionRequiredMixin, View):
             box_number_failed_context = self.build_context(
                 mode=self.MODE_ENTER_BOX_NUMBER,
                 box_number_form=box_number_form,
-                # Form already has this error message, we don't need to
-                # add it to context.
-                errors=[(
-                    f"Box {box_number_form.get('box_number')} not in "
-                    f"inventory"
-                )],
             )
             return render(
                 request,
